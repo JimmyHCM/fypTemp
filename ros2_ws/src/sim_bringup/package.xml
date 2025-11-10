@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sim_bringup</name>
+  <version>0.1.0</version>
+  <description>Launch files, parameters, and RViz configs for the pool cleaning simulation stack.</description>
+  <maintainer email="todo@example.com">TODO Maintainer</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>mock_sonar_sweep</exec_depend>
+  <exec_depend>polar_to_grid_mapper</exec_depend>
+  <exec_depend>mock_state_estimator</exec_depend>
+  <exec_depend>coverage_planner</exec_depend>
+  <exec_depend>local_planner</exec_depend>
+  <exec_depend>collision_costmap</exec_depend>
+  <exec_depend>mission_executor</exec_depend>
+  <exec_depend>teleop_node</exec_depend>
+</package>

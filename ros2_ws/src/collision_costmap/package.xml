@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>collision_costmap</name>
+  <version>0.1.0</version>
+  <description>Creates a forward-sector costmap and velocity scaling for collision avoidance.</description>
+  <maintainer email="todo@example.com">TODO Maintainer</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+</package>

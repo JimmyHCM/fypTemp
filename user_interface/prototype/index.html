@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaSweep Companion UI Prototype</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="app-bar">
+        <div class="app-title">
+            <span class="brand-mark">AquaSweep</span>
+            <span class="mode-label" id="active-mode-label">Home</span>
+        </div>
+        <div class="status-pills">
+            <span class="pill" data-state="good">Battery 82%</span>
+            <span class="pill" data-state="caution">Filter 60%</span>
+            <span class="pill" data-state="good">Connected</span>
+        </div>
+    </header>
+
+    <main>
+        <section class="screen active" id="home-screen" data-screen="Home">
+            <div class="panel">
+                <h1>Control Modes</h1>
+                <div class="mode-grid">
+                    <button class="mode-tile" data-target="preset-screen">
+                        <span>Preset</span>
+                        <small>Start saved plans fast</small>
+                    </button>
+                    <button class="mode-tile" data-target="generate-screen">
+                        <span>Gen Path</span>
+                        <small>Create optimized sweep</small>
+                    </button>
+                    <button class="mode-tile" data-target="manual-screen">
+                        <span>Manual</span>
+                        <small>Direct joystick control</small>
+                    </button>
+                    <button class="mode-tile danger" data-target="return-screen">
+                        <span>End &amp; Return</span>
+                        <small>Safely dock the robot</small>
+                    </button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Status Overview</h2>
+                <div class="status-grid">
+                    <article class="status-card">
+                        <h3>Battery</h3>
+                        <p class="metric">82%</p>
+                        <p>Approx. 34 min remaining</p>
+                    </article>
+                    <article class="status-card caution">
+                        <h3>Filter</h3>
+                        <p class="metric">60%</p>
+                        <p>Rinse recommended soon</p>
+                    </article>
+                    <article class="status-card">
+                        <h3>Connectivity</h3>
+                        <p class="metric">Strong</p>
+                        <p>Poolside relay online</p>
+                    </article>
+                    <article class="status-card">
+                        <h3>Map Status</h3>
+                        <p class="metric">Ready</p>
+                        <p>Last updated 5 min ago</p>
+                    </article>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Live Activity</h2>
+                <div class="live-tiles">
+                    <button class="live-tile" data-state="active">Cleaning now…</button>
+                    <button class="live-tile" data-state="paused">Paused</button>
+                    <button class="live-tile" data-state="returning">Returning</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="screen" id="preset-screen" data-screen="Preset">
+            <div class="panel">
+                <div class="panel-heading">
+                    <h1>Presets</h1>
+                    <button class="primary" id="new-preset-btn">New preset</button>
+                </div>
+                <ul class="preset-list">
+                    <li>
+                        <button class="preset-item">
+                            <span class="icon">⚡</span>
+                            <span>
+                                <strong>Quick Clean</strong>
+                                <small>Shallow lap sweep • 12 min</small>
+                            </span>
+                            <span class="action">Start</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="preset-item">
+                            <span class="icon">🧼</span>
+                            <span>
+                                <strong>Deep Floor</strong>
+                                <small>Full floor spiral • 28 min</small>
+                            </span>
+                            <span class="action">Start</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="preset-item">
+                            <span class="icon">🧱</span>
+                            <span>
+                                <strong>Walls &amp; Waterline</strong>
+                                <small>Vertical scrub • 18 min</small>
+                            </span>
+                            <span class="action">Start</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="panel">
+                <h2>Build from Manual</h2>
+                <p class="body">Save recorded manual paths as reusable presets. The filter below shows available recordings.</p>
+                <div class="chip-row">
+                    <button class="chip" data-state="active">All recordings</button>
+                    <button class="chip">This week</button>
+                    <button class="chip">High coverage</button>
+                </div>
+                <div class="empty-state">
+                    <p>No manual runs saved yet.</p>
+                    <button class="secondary" data-target="manual-screen">Record your first manual run</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="screen" id="generate-screen" data-screen="Gen Path">
+            <div class="panel">
+                <h1>Generate Path</h1>
+                <div class="map-preview">
+                    <div class="map-header">
+                        <span>Coverage map</span>
+                        <span class="pill" data-state="good">Projected 94%</span>
+                    </div>
+                    <div class="map-body">
+                        <div class="heatmap-sim"></div>
+                        <div class="map-kpis">
+                            <div>
+                                <strong>Overlap</strong>
+                                <span>15%</span>
+                            </div>
+                            <div>
+                                <strong>Lane width</strong>
+                                <span>0.8 m</span>
+                            </div>
+                            <div>
+                                <strong>Time est.</strong>
+                                <span>26 min</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <form class="param-form">
+                    <label>
+                        Overlap %
+                        <input type="range" min="5" max="30" value="15" data-output="overlap-output">
+                        <output id="overlap-output">15%</output>
+                    </label>
+                    <label>
+                        Lane width (m)
+                        <input type="range" min="0.5" max="1.5" step="0.1" value="0.8" data-output="lane-output">
+                        <output id="lane-output">0.8 m</output>
+                    </label>
+                    <label>
+                        Sweep speed (m/s)
+                        <input type="range" min="0.2" max="1.0" step="0.1" value="0.6" data-output="speed-output">
+                        <output id="speed-output">0.6 m/s</output>
+                    </label>
+                </form>
+                <button class="primary cta" id="generate-btn">Generate path</button>
+            </div>
+
+            <div class="panel">
+                <h2>History</h2>
+                <ul class="history-list">
+                    <li>
+                        <span>Nov 3 • Deep floor sweep</span>
+                        <span>92% coverage</span>
+                    </li>
+                    <li>
+                        <span>Oct 28 • Walls &amp; waterline</span>
+                        <span>85% coverage</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="screen" id="manual-screen" data-screen="Manual">
+            <div class="panel">
+                <h1>Manual Control</h1>
+                <div class="manual-layout">
+                    <div class="joystick" role="button" aria-label="Virtual joystick">
+                        <div class="joystick-handle"></div>
+                    </div>
+                    <div class="manual-side">
+                        <div class="safety-overlay">
+                            <h2>Safety</h2>
+                            <ul>
+                                <li class="good">No obstacles detected</li>
+                                <li class="warning">Drop-off within 0.5 m</li>
+                                <li class="info">Auto-brake ready</li>
+                            </ul>
+                        </div>
+                        <div class="record-card">
+                            <p>Record your manual session to reuse as a preset.</p>
+                            <div class="record-actions">
+                                <button class="secondary" id="record-btn">Start recording</button>
+                                <button class="ghost" disabled id="save-preset-btn">Save as preset</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="screen" id="return-screen" data-screen="End & Return">
+            <div class="panel">
+                <h1>End &amp; Return</h1>
+                <div class="return-card">
+                    <p>Stop cleaning and send AquaSweep back to dock.</p>
+                    <button class="mode-tile danger full" id="end-return-btn">End &amp; Return</button>
+                    <div class="dock-select">
+                        <label for="dock-select-input">Choose dock</label>
+                        <select id="dock-select-input">
+                            <option>Main deck dock</option>
+                            <option>Shallow end dock</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <dialog id="confirm-dialog">
+                <form method="dialog">
+                    <h2>Confirm return?</h2>
+                    <p>AquaSweep will stop cleaning and navigate to the selected dock.</p>
+                    <menu>
+                        <button value="cancel" class="ghost">Keep cleaning</button>
+                        <button value="confirm" class="danger">Confirm</button>
+                    </menu>
+                </form>
+            </dialog>
+        </section>
+
+        <section class="screen" id="map-screen" data-screen="Map & History">
+            <div class="panel">
+                <h1>Map &amp; History</h1>
+                <div class="map-history-layout">
+                    <div class="map-canvas">
+                        <div class="map-header">
+                            <span>Last run • 92% coverage</span>
+                            <span class="pill" data-state="good">Completed</span>
+                        </div>
+                        <div class="heatmap-sim"></div>
+                        <div class="legend">
+                            <span class="legend-item"><span class="swatch high"></span> High coverage</span>
+                            <span class="legend-item"><span class="swatch medium"></span> Medium</span>
+                            <span class="legend-item"><span class="swatch low"></span> Missed</span>
+                        </div>
+                    </div>
+                    <aside class="run-log">
+                        <h2>Run log</h2>
+                        <ul>
+                            <li>
+                                <strong>Nov 3, 10:20</strong>
+                                <span>Deep floor</span>
+                                <span>Coverage 92%</span>
+                            </li>
+                            <li>
+                                <strong>Oct 28, 09:05</strong>
+                                <span>Walls &amp; waterline</span>
+                                <span>Coverage 85%</span>
+                            </li>
+                            <li>
+                                <strong>Oct 21, 08:40</strong>
+                                <span>Quick clean</span>
+                                <span>Coverage 78%</span>
+                            </li>
+                        </ul>
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <section class="screen" id="settings-screen" data-screen="Settings">
+            <div class="panel">
+                <h1>Settings</h1>
+                <ul class="settings-list">
+                    <li>
+                        <button class="settings-item">
+                            <span>Pool profiles</span>
+                            <small>Manage dimensions &amp; depth</small>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="settings-item">
+                            <span>Sensor calibration</span>
+                            <small>Schedule upcoming check</small>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="settings-item">
+                            <span>Firmware updates</span>
+                            <small>Version 1.8.2 • Up to date</small>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="settings-item">
+                            <span>Wi‑Fi &amp; BLE pairing</span>
+                            <small>Relay bridge connected</small>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-target="home-screen">Home</button>
+        <button class="nav-btn" data-target="preset-screen">Preset</button>
+        <button class="nav-btn" data-target="generate-screen">Gen Path</button>
+        <button class="nav-btn" data-target="manual-screen">Manual</button>
+        <button class="nav-btn" data-target="map-screen">Map</button>
+        <button class="nav-btn" data-target="settings-screen">Settings</button>
+    </nav>
+
+    <template id="toast-template">
+        <div class="toast" role="status">Action completed</div>
+    </template>
+
+    <script src="script.js"></script>
+</body>
+</html>
