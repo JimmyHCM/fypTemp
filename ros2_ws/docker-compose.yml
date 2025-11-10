@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  ros2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Uncomment the platform override if you need to force architecture emulation on Apple Silicon
+    # platform: linux/amd64
+    environment:
+      - DISPLAY=${DISPLAY:-host.docker.internal:0}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
+    volumes:
+      - ./src:/workspace/ros2_ws/src:delegated
+      - ./install:/workspace/ros2_ws/install
+      - ./build:/workspace/ros2_ws/build
+      - ./log:/workspace/ros2_ws/log
+    command: bash
+    tty: true
+    stdin_open: true
+
+  rosbridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
+    volumes:
+      - ./src:/workspace/ros2_ws/src:delegated
+      - ./install:/workspace/ros2_ws/install
+      - ./build:/workspace/ros2_ws/build
+      - ./log:/workspace/ros2_ws/log
+    ports:
+      - "9090:9090"
+    command: ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+    depends_on:
+      - ros2

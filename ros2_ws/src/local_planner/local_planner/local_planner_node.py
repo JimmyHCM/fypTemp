@@ -6,6 +6,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry, Path
 from std_msgs.msg import Float32
+from rclpy.qos import QoSPresetProfiles
 
 
 class LocalPlannerNode(Node):
@@ -25,8 +26,10 @@ class LocalPlannerNode(Node):
         self.pose: Odometry | None = None
         self.velocity_scale = 1.0
 
+        sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
+
         self.create_subscription(Path, '/global_path', self.path_callback, 10)
-        self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.create_subscription(Odometry, '/odom', self.odom_callback, sensor_qos)
         self.create_subscription(Float32, '/collision_velocity_scale', self.velocity_scale_callback, 10)
 
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)

@@ -19,6 +19,7 @@ class CoveragePlannerNode(Node):
         self.declare_parameter('min_area_cells', 50)
 
         self.map: OccupancyGrid | None = None
+        self._warned_low_free_cells = False
 
         self.map_sub = self.create_subscription(OccupancyGrid, '/map', self.map_callback, 10)
         self.path_pub = self.create_publisher(Path, '/coverage_plan', 10)
@@ -37,8 +38,13 @@ class CoveragePlannerNode(Node):
 
         free_indices = [i for i, value in enumerate(data) if value >= 0 and value <= int(self.get_parameter('free_threshold').value)]
         if len(free_indices) < int(self.get_parameter('min_area_cells').value):
-            self.get_logger().warn_once('Not enough free cells for coverage planning yet.')
+            if not self._warned_low_free_cells:
+                self.get_logger().warning('Not enough free cells for coverage planning yet.')
+                self._warned_low_free_cells = True
             return None
+
+        if self._warned_low_free_cells:
+            self._warned_low_free_cells = False
 
         xs, ys = zip(*[self._index_to_xy(index, width) for index in free_indices])
         min_x, max_x = min(xs), max(xs)

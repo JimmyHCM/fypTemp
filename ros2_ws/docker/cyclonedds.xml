@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CycloneDDS>
+    <Domain id="any">
+        <General>
+            <NetworkInterfaceAddress>auto</NetworkInterfaceAddress>
+            <AllowMulticast>true</AllowMulticast>
+            <IPv4>true</IPv4>
+            <IPv6>false</IPv6>
+        </General>
+        <Discovery>
+            <ParticipantIndex>auto</ParticipantIndex>
+            <Peers>
+                <!-- Add host machine IPs here (e.g., 192.168.1.42) when bridging containers -->
+            </Peers>
+        </Discovery>
+    </Domain>
+</CycloneDDS>

@@ -15,7 +15,7 @@
         <div class="status-pills">
             <span class="pill" data-state="good">Battery 82%</span>
             <span class="pill" data-state="caution">Filter 60%</span>
-            <span class="pill" data-state="good">Connected</span>
+            <span class="pill" id="connectivity-pill" data-state="info">Bridge linking…</span>
         </div>
     </header>
 
@@ -56,10 +56,10 @@
                         <p class="metric">60%</p>
                         <p>Rinse recommended soon</p>
                     </article>
-                    <article class="status-card">
+                    <article class="status-card" id="connectivity-card">
                         <h3>Connectivity</h3>
-                        <p class="metric">Strong</p>
-                        <p>Poolside relay online</p>
+                        <p class="metric" id="connectivity-metric">Linking</p>
+                        <p id="connectivity-detail">Waiting for rosbridge</p>
                     </article>
                     <article class="status-card">
                         <h3>Map Status</h3>
@@ -336,6 +336,7 @@
         <div class="toast" role="status">Action completed</div>
     </template>
 
+    <script src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

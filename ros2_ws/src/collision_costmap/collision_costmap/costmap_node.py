@@ -6,6 +6,7 @@ from rclpy.node import Node
 from nav_msgs.msg import OccupancyGrid
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Float32
+from rclpy.qos import QoSPresetProfiles
 
 
 class CollisionCostmapNode(Node):
@@ -23,7 +24,8 @@ class CollisionCostmapNode(Node):
 
         self.costmap_pub = self.create_publisher(OccupancyGrid, '/local_costmap', 10)
         self.scale_pub = self.create_publisher(Float32, '/collision_velocity_scale', 10)
-        self.create_subscription(LaserScan, '/sonar/polar_scan', self.scan_callback, 10)
+        sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
+        self.create_subscription(LaserScan, '/sonar/polar_scan', self.scan_callback, sensor_qos)
 
         self.get_logger().info('Collision costmap node online.')
 

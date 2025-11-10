@@ -6,6 +6,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import OccupancyGrid, Odometry
 from sensor_msgs.msg import LaserScan
+from rclpy.qos import QoSPresetProfiles
 
 
 class PolarToGridMapperNode(Node):
@@ -33,9 +34,11 @@ class PolarToGridMapperNode(Node):
         self.map_origin = (-self.width * self.resolution / 2.0, -self.height * self.resolution / 2.0, 0.0)
         self.log_odds = [0.0 for _ in range(self.width * self.height)]
 
+        sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
+
         self.map_pub = self.create_publisher(OccupancyGrid, '/map', 10)
-        self.scan_sub = self.create_subscription(LaserScan, '/sonar/polar_scan', self.scan_callback, 10)
-        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.scan_sub = self.create_subscription(LaserScan, '/sonar/polar_scan', self.scan_callback, sensor_qos)
+        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, sensor_qos)
 
         publish_period = 1.0 / float(self.get_parameter('publish_rate_hz').value)
         self.timer = self.create_timer(publish_period, self.publish_map)

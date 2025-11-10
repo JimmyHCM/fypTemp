@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+from rclpy.qos import QoSPresetProfiles
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
@@ -23,14 +23,10 @@ class MockSonarSweepNode(Node):
     def __init__(self) -> None:
         super().__init__('mock_sonar_sweep')
 
-        qos = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            history=QoSHistoryPolicy.KEEP_LAST,
-            depth=10,
-        )
+        sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
 
-        self.scan_pub = self.create_publisher(LaserScan, '/sonar/polar_scan', qos)
-        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, qos)
+        self.scan_pub = self.create_publisher(LaserScan, '/sonar/polar_scan', sensor_qos)
+        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, sensor_qos)
 
         self.declare_parameter('fov_deg', 150.0)
         self.declare_parameter('num_beams', 181)

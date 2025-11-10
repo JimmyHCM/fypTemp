@@ -7,7 +7,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from rclpy.qos import QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
+from rclpy.qos import QoSPresetProfiles, QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
 from tf2_ros import TransformBroadcaster
 
 
@@ -33,15 +33,16 @@ class MockStateEstimatorNode(Node):
         self.declare_parameter('angular_drift_std', 0.0002)
         self.declare_parameter('enable_drift', True)
 
-        qos = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+        cmd_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=10,
         )
+        odom_qos = QoSPresetProfiles.SENSOR_DATA.value
 
-        self.cmd_sub = self.create_subscription(Twist, '/cmd_vel', self.cmd_callback, qos)
-        self.odom_pub = self.create_publisher(Odometry, '/odom', qos)
-        self.pose_pub = self.create_publisher(PoseWithCovarianceStamped, '/pose', qos)
+        self.cmd_sub = self.create_subscription(Twist, '/cmd_vel', self.cmd_callback, cmd_qos)
+        self.odom_pub = self.create_publisher(Odometry, '/odom', odom_qos)
+        self.pose_pub = self.create_publisher(PoseWithCovarianceStamped, '/pose', odom_qos)
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.state = RobotState()

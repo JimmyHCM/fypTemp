@@ -75,7 +75,8 @@ body.light {
 }
 
 .pill[data-state="caution"] { border-color: var(--warning); color: var(--warning); }
-.pill[data-state="good"] { border-color: rgba(56, 189, 248, 0.4); color: var(--good); }
+.pill[data-state="good"] { border-color: rgba(34, 197, 94, 0.4); color: var(--good); }
+.pill[data-state="info"] { border-color: rgba(56, 189, 248, 0.4); color: var(--info); }
 
 main {
     flex: 1;
@@ -200,6 +201,10 @@ button.danger:hover {
 .live-tile[data-state="active"] { border: 1px solid var(--good); }
 .live-tile[data-state="paused"] { border: 1px solid var(--warning); }
 .live-tile[data-state="returning"] { border: 1px solid var(--info); }
+.live-tile.live-active {
+    border: 1px solid var(--accent);
+    background: rgba(59, 130, 246, 0.24);
+}
 
 .panel-heading {
     display: flex;

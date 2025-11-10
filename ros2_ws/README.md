@@ -40,6 +40,53 @@ All nodes are implemented in Python for rapid iteration. Each package installs w
    - `scenario` supports `rect_pool`, `l_pool`, `island_pool` for varied obstacle layouts.
    - Pass `teleop:=false` to skip starting the keyboard teleop node (e.g., when using a joystick node).
 
+## Running Inside Docker (macOS/ARM Friendly)
+
+Docker keeps the workspace reproducible when ROS 2 cannot be installed natively (for example on Apple Silicon). Everything you need lives under `ros2_ws/`.
+
+1. **Prerequisites**
+   - Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+   - For RViz or GUI tools on macOS, install [XQuartz](https://www.xquartz.org/) and enable “Allow connections from network clients.” Restart your machine or run `xhost + 127.0.0.1` after starting XQuartz.
+
+2. **Build the image** (from the repository root):
+   ```bash
+   cd ros2_ws
+   docker compose build
+   ```
+
+3. **Start an interactive container** (mounts the workspace for live edits):
+   ```bash
+   docker compose run --rm ros2
+   ```
+
+4. **Inside the container**
+   ```bash
+   # resolve dependencies the first time
+   rosdep install --from-paths src --ignore-src -y
+
+   colcon build --symlink-install
+   source install/setup.bash
+   ros2 launch sim_bringup sim_bringup.launch.py scenario:=rect_pool
+   ```
+
+5. **Expose ROS for the web UI**
+   - Option A (single shell): after sourcing `install/setup.bash`, run
+     ```bash
+     ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+     ```
+   - Option B (Docker service): from the host run
+     ```bash
+     docker compose up rosbridge
+     ```
+     This launches a dedicated container that exposes rosbridge on port `9090`.
+   - The UI prototype in `user_interface/prototype/` can connect with `roslibjs` at `ws://localhost:9090` and publish/subscribe to topics/services.
+
+6. **Tweaking DDS discovery**
+   - Override `ROS_DOMAIN_ID` in `docker-compose.yml` to isolate networks or troubleshoot discovery.
+
+7. **Rebuild after changes**
+   - Source code lives on your host. Re-run `colcon build` inside the container whenever you modify packages. Artifacts persist via the mounted `build/`, `install/`, and `log/` directories.
+
 ## Nodes Overview
 
 - `mock_sonar_sweep`: Emits `sensor_msgs/LaserScan` on `/sonar/polar_scan` with configurable noise, dropouts, and scenarios.
