@@ -5,6 +5,7 @@ import rclpy
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
+from rclpy.qos import QoSPresetProfiles
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
 
@@ -40,8 +41,10 @@ class MissionExecutorNode(Node):
         self.create_service(Trigger, '/mission/end_and_return', self.handle_end_and_return)
         self.create_service(Trigger, '/mission/save_manual_path', self.handle_save_manual_path)
 
+        sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
+
         self.create_subscription(Path, '/coverage_plan', self.coverage_path_callback, 10)
-        self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.create_subscription(Odometry, '/odom', self.odom_callback, sensor_qos)
 
         self.timer = self.create_timer(0.5, self.publish_state)
 
