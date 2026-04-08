@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"entry_points\\\\|console_scripts\" /Users/jimmyhui/fypTemp/ros2_ws/src/*/setup.py)"
+    ]
+  }
+}

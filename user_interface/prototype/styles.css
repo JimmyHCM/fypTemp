@@ -407,6 +407,81 @@ output {
     border-radius: 50%;
     background: rgba(59, 130, 246, 0.6);
     border: 3px solid rgba(255, 255, 255, 0.2);
+    position: absolute;
+    touch-action: none;
+    transition: none;
+}
+
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 8px;
+}
+
+.speed-control label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.speed-control input[type="range"] {
+    flex: 1;
+}
+
+.speed-control output {
+    min-width: 60px;
+    text-align: right;
+}
+
+.esc-feedback {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(148, 163, 184, 0.12);
+    border-radius: 14px;
+}
+
+.esc-bar-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.esc-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    width: 18px;
+    text-align: center;
+}
+
+.esc-bar-track {
+    flex: 1;
+    height: 14px;
+    border-radius: 7px;
+    background: rgba(15, 23, 42, 0.6);
+    overflow: hidden;
+    position: relative;
+}
+
+.esc-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 7px;
+    background: var(--good);
+    transition: width 0.1s ease, background 0.1s ease;
+}
+
+.esc-bar-fill.reverse {
+    background: var(--warning);
+}
+
+.esc-value {
+    font-size: 0.8rem;
+    min-width: 40px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 .manual-side {

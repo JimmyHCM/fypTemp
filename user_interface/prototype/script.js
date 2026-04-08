@@ -290,3 +290,147 @@ if (connectivityPill) {
     setConnectivityState('connecting', `Connecting to ${ROS_CONFIG.url}`);
     connectToRosbridge();
 }
+
+// ---------------------------------------------------------------------------
+// Joystick → /cmd_vel publisher
+// ---------------------------------------------------------------------------
+const joystickZone = document.getElementById('joystick-zone');
+const joystickHandle = document.getElementById('joystick-handle');
+const maxSpeedSlider = document.getElementById('max-speed-slider');
+const escLeftBar = document.getElementById('esc-left-bar');
+const escRightBar = document.getElementById('esc-right-bar');
+const escLeftVal = document.getElementById('esc-left-val');
+const escRightVal = document.getElementById('esc-right-val');
+
+let cmdVelTopic = null;
+let escValuesTopic = null;
+let joystickActive = false;
+let cmdVelInterval = null;
+let currentLinear = 0;
+let currentAngular = 0;
+
+function ensureCmdVelTopic() {
+    if (cmdVelTopic || !ros || !window.ROSLIB) return;
+    cmdVelTopic = new ROSLIB.Topic({
+        ros,
+        name: '/cmd_vel',
+        messageType: 'geometry_msgs/msg/Twist',
+    });
+}
+
+function ensureEscSubscription() {
+    if (escValuesTopic || !ros || !window.ROSLIB) return;
+    escValuesTopic = new ROSLIB.Topic({
+        ros,
+        name: '/esc_values',
+        messageType: 'std_msgs/msg/Float32MultiArray',
+    });
+    escValuesTopic.subscribe(function (msg) {
+        var data = msg.data || [0, 0];
+        var left = data[0] || 0;
+        var right = data[1] || 0;
+        updateEscBars(left, right);
+    });
+}
+
+function updateEscBars(left, right) {
+    var maxEsc = 1000;
+    if (escLeftBar) {
+        var pct = Math.min(Math.abs(left) / maxEsc * 100, 100);
+        escLeftBar.style.width = pct + '%';
+        escLeftBar.classList.toggle('reverse', left < 0);
+    }
+    if (escRightBar) {
+        var pct = Math.min(Math.abs(right) / maxEsc * 100, 100);
+        escRightBar.style.width = pct + '%';
+        escRightBar.classList.toggle('reverse', right < 0);
+    }
+    if (escLeftVal) escLeftVal.textContent = Math.round(left);
+    if (escRightVal) escRightVal.textContent = Math.round(right);
+}
+
+function publishCmdVel(linearX, angularZ) {
+    ensureCmdVelTopic();
+    if (!cmdVelTopic) return;
+    var twist = new ROSLIB.Message({
+        linear: { x: linearX, y: 0, z: 0 },
+        angular: { x: 0, y: 0, z: angularZ },
+    });
+    cmdVelTopic.publish(twist);
+}
+
+function startCmdVelLoop() {
+    if (cmdVelInterval) return;
+    cmdVelInterval = setInterval(function () {
+        publishCmdVel(currentLinear, currentAngular);
+    }, 100); // 10 Hz
+}
+
+function stopCmdVelLoop() {
+    clearInterval(cmdVelInterval);
+    cmdVelInterval = null;
+    currentLinear = 0;
+    currentAngular = 0;
+    publishCmdVel(0, 0);
+}
+
+if (joystickZone && joystickHandle) {
+    function getJoystickOffset(e) {
+        var rect = joystickZone.getBoundingClientRect();
+        var radius = rect.width / 2;
+        var clientX, clientY;
+        if (e.touches) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        var dx = clientX - (rect.left + radius);
+        var dy = clientY - (rect.top + radius);
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var maxDist = radius * 0.8;
+        if (dist > maxDist) {
+            dx = dx / dist * maxDist;
+            dy = dy / dist * maxDist;
+            dist = maxDist;
+        }
+        return { dx: dx, dy: dy, normX: dx / maxDist, normY: -dy / maxDist };
+    }
+
+    function onJoystickMove(e) {
+        if (!joystickActive) return;
+        e.preventDefault();
+        var offset = getJoystickOffset(e);
+        joystickHandle.style.transform = 'translate(' + offset.dx + 'px, ' + offset.dy + 'px)';
+
+        var maxSpeed = parseFloat(maxSpeedSlider?.value || 0.3);
+        var maxAngular = 1.5;
+        currentLinear = offset.normY * maxSpeed;
+        currentAngular = -offset.normX * maxAngular;
+    }
+
+    function onJoystickEnd() {
+        joystickActive = false;
+        joystickHandle.style.transform = 'translate(0px, 0px)';
+        stopCmdVelLoop();
+    }
+
+    joystickZone.addEventListener('mousedown', function (e) {
+        joystickActive = true;
+        ensureEscSubscription();
+        onJoystickMove(e);
+        startCmdVelLoop();
+    });
+    joystickZone.addEventListener('touchstart', function (e) {
+        joystickActive = true;
+        ensureEscSubscription();
+        onJoystickMove(e);
+        startCmdVelLoop();
+    }, { passive: false });
+
+    document.addEventListener('mousemove', onJoystickMove);
+    document.addEventListener('touchmove', onJoystickMove, { passive: false });
+    document.addEventListener('mouseup', onJoystickEnd);
+    document.addEventListener('touchend', onJoystickEnd);
+}

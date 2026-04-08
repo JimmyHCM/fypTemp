@@ -16,6 +16,10 @@ services:
       - ./build:/workspace/ros2_ws/build
       - ./log:/workspace/ros2_ws/log
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
+    # Uncomment to pass through serial devices for hardware control
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0  # Yahboom CH340
+    #   - /dev/ttyUSB1:/dev/ttyUSB1  # RPLIDAR CP210x
     command: bash
     tty: true
     stdin_open: true
