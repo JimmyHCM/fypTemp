@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM osrf/ros:humble-desktop
+FROM ros:humble-ros-base
 
 ARG DEBIAN_FRONTEND=noninteractive
 
