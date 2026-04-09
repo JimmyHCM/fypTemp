@@ -40,9 +40,99 @@ All nodes are implemented in Python for rapid iteration. Each package installs w
    - `scenario` supports `rect_pool`, `l_pool`, `island_pool` for varied obstacle layouts.
    - Pass `teleop:=false` to skip starting the keyboard teleop node (e.g., when using a joystick node).
 
-## Running Inside Docker (macOS/ARM Friendly)
+## Running on Raspberry Pi (Hardware Mode)
 
-Docker keeps the workspace reproducible when ROS 2 cannot be installed natively (for example on Apple Silicon). Everything you need lives under `ros2_ws/`.
+The stack runs inside Docker on the Raspberry Pi. The Dockerfile uses `ros:humble-ros-base` which has native arm64 support.
+
+### Prerequisites
+
+- Docker installed on the Pi (`curl -fsSL https://get.docker.com | sudo sh`)
+- Yahboom board connected via USB (`/dev/ttyUSB0`)
+- Phone/PC on the same network as the Pi
+
+### Step-by-step startup
+
+1. **Build the Docker image** (one-time):
+   ```bash
+   cd ros2_ws
+   sudo docker compose build
+   ```
+
+2. **Build the ROS workspace** (one-time, or after code changes):
+   ```bash
+   sudo docker compose run --rm ros2 bash -c \
+     "source /opt/ros/humble/setup.bash && colcon build --symlink-install"
+   ```
+
+3. **Start rosbridge + ros2 containers**:
+   ```bash
+   cd ros2_ws
+   sudo docker compose up rosbridge -d
+   ```
+   This starts both the `ros2` and `rosbridge` containers. Rosbridge listens on port **9090**.
+
+4. **Install pyserial and launch the hardware stack**:
+   ```bash
+   sudo docker compose exec ros2 bash -c \
+     "apt-get update -qq && apt-get install -y -qq python3-serial && \
+      source /opt/ros/humble/setup.bash && \
+      source /workspace/ros2_ws/install/setup.bash && \
+      ros2 launch sim_bringup hw_bringup.launch.py serial_port:=/dev/ttyUSB0"
+   ```
+   Wait for `Yahboom driver ready` in the output.
+
+5. **Serve the web UI**:
+   ```bash
+   cd ../user_interface/prototype
+   python3 -m http.server 8080
+   ```
+
+6. **Open the web app** on your phone/PC browser:
+   ```
+   http://<PI_IP>:8080?rosbridge=ws://<PI_IP>:9090
+   ```
+   Find the Pi's IP with `hostname -I`. The `rosbridge` URL is saved in localStorage after the first visit.
+
+### Stopping everything
+
+```bash
+cd ros2_ws
+sudo docker compose down
+sudo kill $(lsof -t -i:8080) 2>/dev/null
+```
+
+### Field deployment (no external WiFi)
+
+For environments without a stable network (e.g. a public pool), the Pi can act as its own WiFi hotspot. Your phone connects directly to it — no router needed.
+
+```
+Phone → Pi hotspot (AquaSweep) → web app (8080) + rosbridge (9090) → ROS 2 → motors
+```
+
+**Setup using NetworkManager:**
+
+```bash
+# Create a hotspot on wlan0 (ethernet stays available for SSH)
+sudo nmcli device wifi hotspot ifname wlan0 ssid AquaSweep password aquasweep123
+
+# The Pi gets a static IP of 10.42.0.1 by default
+# On your phone, connect to the "AquaSweep" WiFi, then open:
+#   http://10.42.0.1:8080?rosbridge=ws://10.42.0.1:9090
+```
+
+To make the hotspot start automatically on boot:
+
+```bash
+# Find the connection name
+nmcli con show | grep Hotspot
+
+# Set it to auto-connect
+sudo nmcli con modify Hotspot autoconnect yes
+```
+
+## Running Inside Docker (macOS / Desktop)
+
+Docker keeps the workspace reproducible when ROS 2 cannot be installed natively (e.g. on Apple Silicon).
 
 1. **Prerequisites**
    - Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
@@ -69,17 +159,11 @@ Docker keeps the workspace reproducible when ROS 2 cannot be installed natively 
    ros2 launch sim_bringup sim_bringup.launch.py scenario:=rect_pool
    ```
 
-5. **Expose ROS for the web UI**
-   - Option A (single shell): after sourcing `install/setup.bash`, run
-     ```bash
-     ros2 launch rosbridge_server rosbridge_websocket_launch.xml
-     ```
-   - Option B (Docker service): from the host run
-     ```bash
-     docker compose up rosbridge
-     ```
-     This launches a dedicated container that exposes rosbridge on port `9090`.
-   - The UI prototype in `user_interface/prototype/` can connect with `roslibjs` at `ws://localhost:9090` and publish/subscribe to topics/services.
+5. **Expose ROS for the web UI**:
+   ```bash
+   docker compose up rosbridge -d
+   ```
+   Rosbridge will be available at `ws://localhost:9090`. The UI prototype in `user_interface/prototype/` connects via roslibjs.
 
 6. **Tweaking DDS discovery**
    - Override `ROS_DOMAIN_ID` in `docker-compose.yml` to isolate networks or troubleshoot discovery.
