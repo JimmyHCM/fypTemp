@@ -42,7 +42,7 @@ class CollisionCostmapNode(Node):
 
         min_distance = msg.range_max
         for angle_index, distance in enumerate(msg.ranges):
-            if math.isnan(distance) or distance <= 0.0:
+            if math.isinf(distance) or math.isnan(distance) or distance <= 0.0:
                 continue
             angle = msg.angle_min + angle_index * msg.angle_increment
             if abs(angle) > half_sector:

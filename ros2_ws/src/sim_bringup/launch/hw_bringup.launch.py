@@ -4,7 +4,8 @@ Hardware bringup launch file.
 Launches the real hardware stack:
   - yahboom_driver: serial bridge to ESCs via Yahboom board
   - sllidar_ros2: RPLIDAR C1 driver publishing /scan
-  - odom_integrator: still used until real IMU/encoders are integrated
+  - yahboom_driver: also reads ICM20948 IMU data from the board (publishes /imu/data_raw, /imu/mag)
+  - odom_integrator: still used until real encoders are integrated
   - All planning / costmap / mission nodes from the sim stack
 
 Usage:
@@ -64,6 +65,13 @@ def generate_launch_description() -> LaunchDescription:
             name='base_to_laser_tf',
             arguments=['0', '0', '0.05', '0', '0', '0', 'base_link', 'laser'],
         ),
+        # --- Static TF: map → odom (identity, until a proper localizer is added) ---
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='map_to_odom_tf',
+            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+        ),
         # --- Hardware driver ---
         Node(
             package='yahboom_driver',
@@ -78,10 +86,20 @@ def generate_launch_description() -> LaunchDescription:
                 'cmd_timeout': 0.5,
                 'update_rate_hz': 20.0,
                 'dry_run': dry_run,
+                'imu_enabled': True,
+                'imu_frame_id': 'imu_link',
+                'dump_serial_frames': False,
             }],
             output='screen',
         ),
-        # --- Odometry integrator (until real IMU is integrated) ---
+        # --- Static TF: base_link → imu_link ---
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_to_imu_tf',
+            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'imu_link'],
+        ),
+        # --- Odometry integrator (until real encoders are integrated) ---
         Node(
             package='odom_integrator',
             executable='odom_integrator_node',
@@ -114,6 +132,14 @@ def generate_launch_description() -> LaunchDescription:
             package='mission_executor',
             executable='mission_executor_node',
             name='mission_executor',
+        ),
+        # --- RViz ---
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d', rviz_config],
+            output='screen',
         ),
     ]
 
