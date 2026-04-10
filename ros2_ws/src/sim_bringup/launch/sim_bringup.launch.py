@@ -20,15 +20,15 @@ def generate_launch_description() -> LaunchDescription:
 
     nodes = [
         Node(
-            package='mock_state_estimator',
-            executable='mock_state_estimator_node',
-            name='mock_state_estimator',
+            package='odom_integrator',
+            executable='odom_integrator_node',
+            name='odom_integrator',
             parameters=[{'update_rate_hz': 30.0}],
         ),
         Node(
-            package='mock_sonar_sweep',
-            executable='mock_sonar_sweep_node',
-            name='mock_sonar_sweep',
+            package='sim_scan_publisher',
+            executable='sim_scan_publisher_node',
+            name='sim_scan_publisher',
             parameters=[{'scenario': scenario}],
         ),
         Node(

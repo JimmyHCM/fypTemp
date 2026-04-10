@@ -10,7 +10,7 @@ from rclpy.qos import QoSPresetProfiles
 
 
 class PolarToGridMapperNode(Node):
-    """Converts polar sonar sweeps into an occupancy grid via basic ray casting."""
+    """Converts laser scans into an occupancy grid via basic ray casting."""
 
     def __init__(self) -> None:
         super().__init__('polar_to_grid_mapper')
@@ -23,6 +23,7 @@ class PolarToGridMapperNode(Node):
         self.declare_parameter('min_log_odds', -2.0)
         self.declare_parameter('max_log_odds', 3.5)
         self.declare_parameter('publish_rate_hz', 2.0)
+        self.declare_parameter('scan_topic', '/scan')
 
         self.pose: Pose | None = None
         self.map_frame = 'map'
@@ -35,9 +36,10 @@ class PolarToGridMapperNode(Node):
         self.log_odds = [0.0 for _ in range(self.width * self.height)]
 
         sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
+        scan_topic = str(self.get_parameter('scan_topic').value)
 
         self.map_pub = self.create_publisher(OccupancyGrid, '/map', 10)
-        self.scan_sub = self.create_subscription(LaserScan, '/sonar/polar_scan', self.scan_callback, sensor_qos)
+        self.scan_sub = self.create_subscription(LaserScan, scan_topic, self.scan_callback, sensor_qos)
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, sensor_qos)
 
         publish_period = 1.0 / float(self.get_parameter('publish_rate_hz').value)

@@ -1,24 +1,61 @@
-# Pool Cleaning Simulation Stack (ROS 2)
+# AquaSweep — Autonomous Pool Cleaning Robot (ROS 2)
 
-This ROS 2 workspace provides a simulation-first stack for the autonomous pool cleaning MVP. It includes synthetic sensing, mapping, coverage planning, local collision-aware control, mission execution, and teleoperation helpers.
+This repository contains the full software stack for an autonomous pool cleaning robot built on ROS 2 Humble. It includes synthetic sensing for simulation, RPLIDAR C1 support for real hardware, occupancy grid mapping, boustrophedon coverage planning, collision-aware local control, a service-driven mission state machine, a hardware driver for the Yahboom ESC board, and a mobile-first web UI for remote operation.
+
+All scan-consuming nodes accept a configurable `scan_topic` parameter (default `/scan`), so the same pipeline works with both the simulated scan publisher and the real RPLIDAR C1.
 
 ## Workspace Layout
 
 ```
-ros2_ws/
-  ├── src/
-  │   ├── mock_sonar_sweep          # Synthetic polar sonar publisher
-  │   ├── polar_to_grid_mapper      # Ray-casting occupancy grid mapper
-  │   ├── mock_state_estimator      # Odometry integrator with drift/noise
-  │   ├── coverage_planner          # Boustrophedon planner over /map
-  │   ├── collision_costmap         # Forward-sector costmap + velocity scaling
-  │   ├── local_planner             # Pure pursuit follower using /global_path
-  │   ├── mission_executor          # State machine for Preset/Gen Path/Manual/Return
-  │   ├── teleop_node               # Keyboard teleoperation (optional)
-  │   └── sim_bringup               # Launch files and RViz configuration
+fypTemp/                                # Project root
+├── test_esc.py                         # Standalone ESC serial test (Windows, non-ROS)
+├── TODO.md                             # Priority roadmap (ESC integration, RPLIDAR C1)
+│
+├── ros2_ws/                            # ROS 2 Humble workspace
+│   ├── Dockerfile                      # ros:humble-ros-base + build tools + drivers
+│   ├── docker-compose.yml              # Two services: ros2 (interactive) + rosbridge (ws:9090)
+│   ├── docker/
+│   │   ├── cyclonedds.xml              # CycloneDDS configuration
+│   │   └── ros_entrypoint.sh           # Container entrypoint wrapper
+│   ├── log_manual_control.py           # Historical logging utility
+│   │
+│   └── src/                            # 10 ROS 2 Python packages (ament_python)
+│       │
+│       │  ── Sensing ──────────────────────────────────────────
+│       ├── sim_scan_publisher/         # Synthetic laser scan → /scan (sim only, 5 Hz)
+│       ├── odom_integrator/            # Dead-reckoning odometry with drift & noise (30 Hz)
+│       │
+│       │  ── Mapping ──────────────────────────────────────────
+│       ├── polar_to_grid_mapper/       # Log-odds occupancy grid from /scan (2 Hz)
+│       │
+│       │  ── Planning ─────────────────────────────────────────
+│       ├── coverage_planner/           # Boustrophedon coverage over /map
+│       ├── collision_costmap/          # Forward-sector costmap + velocity scaling
+│       ├── local_planner/              # Pure pursuit path follower (10 Hz)
+│       │
+│       │  ── Mission & Control ────────────────────────────────
+│       ├── mission_executor/           # State machine: Preset / Gen Path / Manual / Return
+│       ├── teleop_node/                # Keyboard teleoperation → /cmd_vel
+│       │
+│       │  ── Hardware ─────────────────────────────────────────
+│       ├── yahboom_driver/             # Serial ESC driver for YB-ERF01 board (UART 115200)
+│       │                               # RPLIDAR C1 via sllidar_ros2 (external dep)
+│       │
+│       │  ── Bringup ─────────────────────────────────────────
+│       └── sim_bringup/                # Launch files (sim + hw) and RViz config
+│
+└── user_interface/                     # Mobile-first web UI (vanilla JS + roslibjs)
+    ├── prototype/
+    │   ├── index.html                  # SPA: 7 screens (Dashboard, Preset, Gen Path, Manual, …)
+    │   ├── script.js                   # ROS bridge, joystick, service calls
+    │   └── styles.css                  # Dark/light themes, glassmorphism, responsive
+    ├── copywriting.md                  # Production UI copy strings
+    ├── demo_storyboard.md              # 30-second demo script
+    ├── ux_flow.md                      # Mermaid state diagram for screen transitions
+    └── README.md                       # UI deliverables guide
 ```
 
-All nodes are implemented in Python for rapid iteration. Each package installs with `ament_python` and exposes a console entry point.
+All ROS 2 nodes are implemented in Python. Each package installs with `ament_python` and exposes a console entry point.
 
 ## Quick Start
 
@@ -77,9 +114,9 @@ The stack runs inside Docker on the Raspberry Pi. The Dockerfile uses `ros:humbl
      "apt-get update -qq && apt-get install -y -qq python3-serial && \
       source /opt/ros/humble/setup.bash && \
       source /workspace/ros2_ws/install/setup.bash && \
-      ros2 launch sim_bringup hw_bringup.launch.py serial_port:=/dev/ttyUSB0"
+      ros2 launch sim_bringup hw_bringup.launch.py serial_port:=/dev/ttyUSB0 lidar_port:=/dev/ttyUSB1"
    ```
-   Wait for `Yahboom driver ready` in the output.
+   Wait for `Yahboom driver ready` in the output. The RPLIDAR C1 starts automatically via `sllidar_ros2`.
 
 5. **Serve the web UI**:
    ```bash
@@ -173,20 +210,52 @@ Docker keeps the workspace reproducible when ROS 2 cannot be installed natively 
 
 ## Nodes Overview
 
-- `mock_sonar_sweep`: Emits `sensor_msgs/LaserScan` on `/sonar/polar_scan` with configurable noise, dropouts, and scenarios.
-- `polar_to_grid_mapper`: Integrates scans into `/map` (`nav_msgs/OccupancyGrid`) using log-odds updates.
-- `mock_state_estimator`: Subscribes to `/cmd_vel`, injects drift/noise, and publishes `/odom`, `/pose`, plus TF from `odom` → `base_link`.
-- `coverage_planner`: Produces `/coverage_plan` (`nav_msgs/Path`) with adjustable lane spacing/overlap once the map has enough free cells.
-- `local_planner`: Follows `/global_path` via pure pursuit while respecting `/collision_velocity_scale` from the collision module.
-- `collision_costmap`: Converts the latest scan into `/local_costmap` (`OccupancyGrid`) and a velocity scaling factor.
-- `mission_executor`: Service-driven state machine exposing:
-  - `/mission/start_preset`
-  - `/mission/gen_path`
-  - `/mission/manual_on` / `/mission/manual_off`
-  - `/mission/save_manual_path`
-  - `/mission/end_and_return`
-  It republishes paths to `/global_path` and advertises the active mode on `/mission_state` (`std_msgs/String`).
-- `teleop_node`: Minimal keyboard teleoperation publishing `/cmd_vel`.
+| Node | Publishes | Subscribes | Summary |
+|------|-----------|------------|---------|
+| `sim_scan_publisher` | `/scan` (LaserScan) | `/odom` | Synthetic laser scan with noise, dropouts, and multiple pool scenarios (sim only). |
+| `odom_integrator` | `/odom`, `/pose`, TF `odom→base_link` | `/cmd_vel` | Dead-reckoning odometry with configurable drift and noise (30 Hz). |
+| `polar_to_grid_mapper` | `/map` (OccupancyGrid) | `/scan`, `/odom` | Log-odds Bayesian grid mapping via Bresenham ray-casting (200×200 @ 0.15 m). |
+| `coverage_planner` | `/coverage_plan` (Path) | `/map` | Boustrophedon lane planner with adjustable spacing and overlap. |
+| `collision_costmap` | `/local_costmap`, `/collision_velocity_scale` (Float32) | `/scan` | 120° forward-sector costmap; scales velocity linearly 0.4–1.2 m. |
+| `local_planner` | `/cmd_vel` | `/global_path`, `/odom`, `/collision_velocity_scale` | Pure pursuit follower (lookahead 0.8 m, 10 Hz). |
+| `mission_executor` | `/global_path`, `/mission_state`, `/manual_trace` | `/coverage_plan`, `/odom` | State machine (IDLE → PRESET / AUTO_GEN / MANUAL / RETURN) with six `Trigger` services under `/mission/*`. |
+| `yahboom_driver` | `/esc_values` (Float32MultiArray) | `/cmd_vel` | Serial driver for YB-ERF01-V3.0 board; differential kinematics, auto-arming, safety timeout. |
+| `teleop_node` | `/cmd_vel` | — | WASD keyboard teleoperation (0.3 m/s linear, 0.7 rad/s angular). |
+| `sllidar_node` | `/scan` (LaserScan) | — | RPLIDAR C1 driver (hardware only, via `sllidar_ros2`). |
+| `sim_bringup` | — | — | Launch files: `sim_bringup.launch.py` (simulation) and `hw_bringup.launch.py` (hardware + RPLIDAR C1). |
+
+### Data Flow
+
+```
+┌─ Sensing ──────────────────────────────────────────────────────┐
+│  sim_scan_publisher ──→ /scan  (sim)                            │
+│  sllidar_node       ──→ /scan  (hardware, RPLIDAR C1)           │
+│  odom_integrator    ──→ /odom, TF                              │
+└────────────────────────────────────────────────────────────────┘
+        │                        │
+        ▼                        ▼
+┌─ Mapping ──────────────────────────────────────────────────────┐
+│  polar_to_grid_mapper ──→ /map                                 │
+└────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ Planning ─────────────────────────────────────────────────────┐
+│  coverage_planner ──→ /coverage_plan                           │
+│  collision_costmap ──→ /local_costmap, /collision_velocity_scale│
+└────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ Mission & Execution ─────────────────────────────────────────┐
+│  mission_executor ──→ /global_path, /mission_state             │
+│  local_planner    ──→ /cmd_vel                                 │
+│  teleop_node      ──→ /cmd_vel (manual override)               │
+└────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─ Hardware ─────────────────────────────────────────────────────┐
+│  yahboom_driver ──→ UART /dev/ttyUSB0 ──→ ESC motors           │
+└────────────────────────────────────────────────────────────────┘
+```
 
 ## Manual Path Recording Workflow
 
@@ -206,9 +275,7 @@ A typical demo sequence in RViz:
 
 ## Next Steps
 
-- Hook a joystick/GUI teleop and replace keyboard control.
-- Connect bag recording scripts to capture synthetic datasets.
-- Add evaluation scripts (coverage %, min obstacle distance) and integrate with the mission executor.
-- Transition packages to C++ or optimized Python as performance demands increase.
-
-Feel free to extend parameters or launch arguments to match your hardware-in-the-loop requirements.
+1. **ESC ↔ Yahboom board integration** — Validate wiring, protocol, and throttle range on real hardware; set safety limits.
+2. **RPLIDAR C1 field testing** — Verify `/scan` quality in water/poolside environments; tune mapper resolution and costmap thresholds for real data.
+3. **Web UI service calls** — Wire remaining mission services (`start_preset`, `gen_path`, `end_and_return`) in `script.js`.
+4. **Evaluation scripts** — Coverage %, min obstacle distance, and run-time metrics fed back to the mission executor.

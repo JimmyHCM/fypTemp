@@ -20,11 +20,11 @@ class RobotState:
     angular_drift: float = 0.0
 
 
-class MockStateEstimatorNode(Node):
+class OdomIntegratorNode(Node):
     """Integrates commanded velocity into an odometry stream with configurable noise."""
 
     def __init__(self) -> None:
-        super().__init__('mock_state_estimator')
+        super().__init__('odom_integrator')
 
         self.declare_parameter('update_rate_hz', 30.0)
         self.declare_parameter('linear_velocity_noise_std', 0.02)
@@ -52,7 +52,7 @@ class MockStateEstimatorNode(Node):
         update_period = 1.0 / float(self.get_parameter('update_rate_hz').value)
         self.timer = self.create_timer(update_period, self.update_state)
 
-        self.get_logger().info('Mock state estimator running (update_rate=%.1f Hz)' % (1.0 / update_period))
+        self.get_logger().info('Odom integrator running (update_rate=%.1f Hz)' % (1.0 / update_period))
 
     def cmd_callback(self, msg: Twist) -> None:
         self.last_cmd = msg
@@ -112,7 +112,7 @@ class MockStateEstimatorNode(Node):
         self.tf_broadcaster.sendTransform(transform)
 
     def destroy_node(self) -> None:
-        self.get_logger().info('Shutting down mock state estimator.')
+        self.get_logger().info('Shutting down odom integrator.')
         super().destroy_node()
 
     def _yaw_to_quaternion(self, yaw: float) -> tuple[float, float, float, float]:
@@ -122,7 +122,7 @@ class MockStateEstimatorNode(Node):
 
 def main() -> None:
     rclpy.init()
-    node = MockStateEstimatorNode()
+    node = OdomIntegratorNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

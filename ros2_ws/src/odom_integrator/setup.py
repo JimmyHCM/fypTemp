@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'mock_sonar_sweep'
+package_name = 'odom_integrator'
 
 setup(
     name=package_name,
@@ -14,12 +14,12 @@ setup(
     zip_safe=True,
     maintainer='TODO Maintainer',
     maintainer_email='todo@example.com',
-    description='Synthetic polar sonar scan publisher for pool simulation.',
+    description='Dead-reckoning odometry integrator with configurable noise and drift.',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mock_sonar_sweep_node = mock_sonar_sweep.sonar_node:main',
+            'odom_integrator_node = odom_integrator.odom_integrator_node:main',
         ],
     },
 )

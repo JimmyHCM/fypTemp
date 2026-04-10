@@ -3,7 +3,8 @@ Hardware bringup launch file.
 
 Launches the real hardware stack:
   - yahboom_driver: serial bridge to ESCs via Yahboom board
-  - mock_state_estimator: still used until real IMU/encoders are integrated
+  - sllidar_ros2: RPLIDAR C1 driver publishing /scan
+  - odom_integrator: still used until real IMU/encoders are integrated
   - All planning / costmap / mission nodes from the sim stack
 
 Usage:
@@ -22,6 +23,7 @@ def generate_launch_description() -> LaunchDescription:
     serial_port = LaunchConfiguration('serial_port')
     dry_run = LaunchConfiguration('dry_run')
     rviz_config = LaunchConfiguration('rviz_config')
+    lidar_port = LaunchConfiguration('lidar_port')
 
     declare_serial_port = DeclareLaunchArgument(
         'serial_port', default_value='/dev/ttyUSB0',
@@ -35,8 +37,33 @@ def generate_launch_description() -> LaunchDescription:
         'rviz_config',
         default_value=PathJoinSubstitution([FindPackageShare('sim_bringup'), 'rviz', 'pool_sim.rviz']),
     )
+    declare_lidar_port = DeclareLaunchArgument(
+        'lidar_port', default_value='/dev/ttyUSB1',
+        description='Serial port for the RPLIDAR C1',
+    )
 
     nodes = [
+        # --- RPLIDAR C1 ---
+        Node(
+            package='sllidar_ros2',
+            executable='sllidar_node',
+            name='sllidar_node',
+            parameters=[{
+                'serial_port': lidar_port,
+                'serial_baudrate': 460800,
+                'frame_id': 'laser',
+                'angle_compensate': True,
+                'scan_mode': 'Standard',
+            }],
+            output='screen',
+        ),
+        # --- Static TF: base_link → laser ---
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_to_laser_tf',
+            arguments=['0', '0', '0.05', '0', '0', '0', 'base_link', 'laser'],
+        ),
         # --- Hardware driver ---
         Node(
             package='yahboom_driver',
@@ -54,14 +81,14 @@ def generate_launch_description() -> LaunchDescription:
             }],
             output='screen',
         ),
-        # --- State estimator (mock until real IMU is integrated) ---
+        # --- Odometry integrator (until real IMU is integrated) ---
         Node(
-            package='mock_state_estimator',
-            executable='mock_state_estimator_node',
-            name='mock_state_estimator',
+            package='odom_integrator',
+            executable='odom_integrator_node',
+            name='odom_integrator',
             parameters=[{'update_rate_hz': 30.0}],
         ),
-        # --- Mapping & planning (same as sim) ---
+        # --- Mapping & planning ---
         Node(
             package='polar_to_grid_mapper',
             executable='polar_to_grid_mapper_node',
@@ -94,5 +121,6 @@ def generate_launch_description() -> LaunchDescription:
         declare_serial_port,
         declare_dry_run,
         declare_rviz_config,
+        declare_lidar_port,
         *nodes,
     ])

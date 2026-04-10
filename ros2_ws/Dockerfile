@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     ros-humble-tf-transformations \
     ros-humble-tf2-ros \
     ros-humble-rmw-cyclonedds-cpp \
+    ros-humble-sllidar-ros2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure rosdep (needed when building in-container)

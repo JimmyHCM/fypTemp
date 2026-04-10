@@ -14,7 +14,7 @@ setup(
     zip_safe=True,
     maintainer='TODO Maintainer',
     maintainer_email='todo@example.com',
-    description='Polar sonar to occupancy grid mapper.',
+    description='Laser scan to occupancy grid mapper.',
     license='MIT',
     tests_require=['pytest'],
     entry_points={

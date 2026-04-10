@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>mock_sonar_sweep</name>
+  <name>sim_scan_publisher</name>
   <version>0.1.0</version>
-  <description>Publishes synthetic polar sonar scans for pool boundaries and obstacles.</description>
+  <description>Publishes synthetic laser scans for pool simulation.</description>
   <maintainer email="todo@example.com">TODO Maintainer</maintainer>
   <license>MIT</license>
   <buildtool_depend>ament_python</buildtool_depend>

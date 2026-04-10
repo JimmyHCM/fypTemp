@@ -2,7 +2,7 @@
 <package format="3">
   <name>polar_to_grid_mapper</name>
   <version>0.1.0</version>
-  <description>Converts synthetic sonar LaserScan readings into an OccupancyGrid.</description>
+  <description>Converts LaserScan readings into an OccupancyGrid via ray casting.</description>
   <maintainer email="todo@example.com">TODO Maintainer</maintainer>
   <license>MIT</license>
   <buildtool_depend>ament_python</buildtool_depend>

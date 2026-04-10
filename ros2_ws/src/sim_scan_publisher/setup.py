@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'mock_state_estimator'
+package_name = 'sim_scan_publisher'
 
 setup(
     name=package_name,
@@ -14,12 +14,12 @@ setup(
     zip_safe=True,
     maintainer='TODO Maintainer',
     maintainer_email='todo@example.com',
-    description='Simple motion model with noise to provide simulated odometry.',
+    description='Synthetic laser scan publisher for pool simulation.',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mock_state_estimator_node = mock_state_estimator.state_estimator_node:main',
+            'sim_scan_publisher_node = sim_scan_publisher.scan_publisher_node:main',
         ],
     },
 )

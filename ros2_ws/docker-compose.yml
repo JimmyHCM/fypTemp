@@ -19,6 +19,7 @@ services:
     network_mode: host
     devices:
       - /dev/ttyUSB0:/dev/ttyUSB0  # Yahboom CH340
+      - /dev/ttyUSB1:/dev/ttyUSB1  # RPLIDAR C1
     command: bash
     tty: true
     stdin_open: true

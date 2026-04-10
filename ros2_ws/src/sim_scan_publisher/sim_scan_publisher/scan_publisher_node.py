@@ -17,15 +17,18 @@ class Segment:
     end: Tuple[float, float]
 
 
-class MockSonarSweepNode(Node):
-    """Publishes synthetic LaserScan messages emulating a scanning sonar."""
+class SimScanPublisherNode(Node):
+    """Publishes synthetic LaserScan messages for pool simulation."""
 
     def __init__(self) -> None:
-        super().__init__('mock_sonar_sweep')
+        super().__init__('sim_scan_publisher')
 
         sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
 
-        self.scan_pub = self.create_publisher(LaserScan, '/sonar/polar_scan', sensor_qos)
+        self.declare_parameter('scan_topic', '/scan')
+        scan_topic = str(self.get_parameter('scan_topic').value)
+
+        self.scan_pub = self.create_publisher(LaserScan, scan_topic, sensor_qos)
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, sensor_qos)
 
         self.declare_parameter('fov_deg', 150.0)
@@ -45,7 +48,7 @@ class MockSonarSweepNode(Node):
         update_period = 1.0 / float(self.get_parameter('update_rate_hz').value)
         self.timer = self.create_timer(update_period, self.publish_scan)
 
-        self.get_logger().info('Mock sonar sweep node ready (scenario=%s)' % self.get_parameter('scenario').value)
+        self.get_logger().info('Sim scan publisher ready (scenario=%s)' % self.get_parameter('scenario').value)
 
     def odom_callback(self, msg: Odometry) -> None:
         self.pose = msg.pose.pose
@@ -206,7 +209,7 @@ class MockSonarSweepNode(Node):
 
 def main() -> None:
     rclpy.init()
-    node = MockSonarSweepNode()
+    node = SimScanPublisherNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

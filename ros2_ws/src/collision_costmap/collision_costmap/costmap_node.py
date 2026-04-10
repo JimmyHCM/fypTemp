@@ -10,7 +10,7 @@ from rclpy.qos import QoSPresetProfiles
 
 
 class CollisionCostmapNode(Node):
-    """Creates a forward-looking costmap and velocity scaling factor from sonar scans."""
+    """Creates a forward-looking costmap and velocity scaling factor from laser scans."""
 
     def __init__(self) -> None:
         super().__init__('collision_costmap')
@@ -21,11 +21,13 @@ class CollisionCostmapNode(Node):
         self.declare_parameter('grid_resolution', 0.1)
         self.declare_parameter('grid_width', 40)
         self.declare_parameter('grid_height', 20)
+        self.declare_parameter('scan_topic', '/scan')
 
         self.costmap_pub = self.create_publisher(OccupancyGrid, '/local_costmap', 10)
         self.scale_pub = self.create_publisher(Float32, '/collision_velocity_scale', 10)
         sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
-        self.create_subscription(LaserScan, '/sonar/polar_scan', self.scan_callback, sensor_qos)
+        scan_topic = str(self.get_parameter('scan_topic').value)
+        self.create_subscription(LaserScan, scan_topic, self.scan_callback, sensor_qos)
 
         self.get_logger().info('Collision costmap node online.')
 

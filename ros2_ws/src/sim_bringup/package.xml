@@ -8,9 +8,9 @@
   <buildtool_depend>ament_python</buildtool_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
-  <exec_depend>mock_sonar_sweep</exec_depend>
+  <exec_depend>sim_scan_publisher</exec_depend>
   <exec_depend>polar_to_grid_mapper</exec_depend>
-  <exec_depend>mock_state_estimator</exec_depend>
+  <exec_depend>odom_integrator</exec_depend>
   <exec_depend>coverage_planner</exec_depend>
   <exec_depend>local_planner</exec_depend>
   <exec_depend>collision_costmap</exec_depend>
