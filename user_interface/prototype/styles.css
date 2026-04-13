@@ -598,6 +598,19 @@ output {
 .swatch.high { background: rgba(34, 197, 94, 0.8); }
 .swatch.medium { background: rgba(234, 179, 8, 0.7); }
 .swatch.low { background: rgba(239, 68, 68, 0.6); }
+.swatch.occupied { background: #e2e8f0; }
+.swatch.free { background: #1e293b; }
+.swatch.unknown { background: #475569; }
+
+#slam-map-canvas {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    background: #1e293b;
+    image-rendering: pixelated;
+    align-self: center;
+}
 
 .run-log {
     background: rgba(148, 163, 184, 0.12);

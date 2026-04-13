@@ -65,12 +65,15 @@ def generate_launch_description() -> LaunchDescription:
             name='base_to_laser_tf',
             arguments=['0', '0', '0.05', '0', '0', '0', 'base_link', 'laser'],
         ),
-        # --- Static TF: map → odom (identity, until a proper localizer is added) ---
+        # --- SLAM Toolbox (online async) — publishes map→odom TF and /map ---
         Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='map_to_odom_tf',
-            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+            package='slam_toolbox',
+            executable='async_slam_toolbox_node',
+            name='slam_toolbox',
+            parameters=[
+                PathJoinSubstitution([FindPackageShare('sim_bringup'), 'config', 'slam_toolbox_online_async.yaml']),
+            ],
+            output='screen',
         ),
         # --- Hardware driver ---
         Node(
@@ -106,13 +109,7 @@ def generate_launch_description() -> LaunchDescription:
             name='odom_integrator',
             parameters=[{'update_rate_hz': 30.0}],
         ),
-        # --- Mapping & planning ---
-        Node(
-            package='polar_to_grid_mapper',
-            executable='polar_to_grid_mapper_node',
-            name='polar_to_grid_mapper',
-            parameters=[{'resolution': 0.15, 'publish_rate_hz': 2.0}],
-        ),
+        # --- Planning ---
         Node(
             package='coverage_planner',
             executable='coverage_planner_node',

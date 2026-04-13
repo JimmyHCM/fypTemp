@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     ros-humble-tf-transformations \
     ros-humble-tf2-ros \
     ros-humble-rmw-cyclonedds-cpp \
+    ros-humble-slam-toolbox \
     ros-humble-rviz2 \
     && rm -rf /var/lib/apt/lists/*
 

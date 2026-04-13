@@ -244,6 +244,7 @@ function connectToRosbridge() {
         spawnToast('Connected to ROS 2');
         teardownMissionStateSubscription();
         attachMissionStateSubscription();
+        attachMapSubscription();
         window.ros = ros;
     });
 
@@ -251,6 +252,7 @@ function connectToRosbridge() {
         console.error('rosbridge error', error);
         setConnectivityState('error', 'Connection error. Retrying…');
         teardownMissionStateSubscription();
+        teardownMapSubscription();
         ros = null;
         scheduleReconnect();
     });
@@ -258,6 +260,7 @@ function connectToRosbridge() {
     ros.on('close', () => {
         setConnectivityState('error', 'Disconnected. Retrying…');
         teardownMissionStateSubscription();
+        teardownMapSubscription();
         ros = null;
         if (suppressNextReconnect) {
             suppressNextReconnect = false;
@@ -433,4 +436,91 @@ if (joystickZone && joystickHandle) {
     document.addEventListener('touchmove', onJoystickMove, { passive: false });
     document.addEventListener('mouseup', onJoystickEnd);
     document.addEventListener('touchend', onJoystickEnd);
+}
+
+// ---------------------------------------------------------------------------
+// /map (OccupancyGrid) → canvas renderer
+// ---------------------------------------------------------------------------
+const slamCanvas = document.getElementById('slam-map-canvas');
+const slamCtx = slamCanvas ? slamCanvas.getContext('2d') : null;
+const mapStatusLabel = document.getElementById('map-status-label');
+const mapStatusPill = document.getElementById('map-status-pill');
+let mapTopic = null;
+
+function renderOccupancyGrid(msg) {
+    if (!slamCtx) return;
+
+    const width = msg.info.width;
+    const height = msg.info.height;
+    const data = msg.data;
+
+    slamCanvas.width = width;
+    slamCanvas.height = height;
+
+    const imgData = slamCtx.createImageData(width, height);
+    const pixels = imgData.data;
+
+    for (let row = 0; row < height; row++) {
+        for (let col = 0; col < width; col++) {
+            // OccupancyGrid row 0 is bottom; canvas row 0 is top → flip Y
+            const srcIdx = (height - 1 - row) * width + col;
+            const dstIdx = (row * width + col) * 4;
+            const cell = data[srcIdx];
+
+            if (cell === -1 || cell === 255) {
+                // Unknown
+                pixels[dstIdx]     = 71;
+                pixels[dstIdx + 1] = 85;
+                pixels[dstIdx + 2] = 105;
+                pixels[dstIdx + 3] = 255;
+            } else if (cell === 0) {
+                // Free space
+                pixels[dstIdx]     = 30;
+                pixels[dstIdx + 1] = 41;
+                pixels[dstIdx + 2] = 59;
+                pixels[dstIdx + 3] = 255;
+            } else {
+                // Occupied — brighter = more certain
+                const brightness = Math.min(255, 100 + cell * 1.55);
+                pixels[dstIdx]     = brightness;
+                pixels[dstIdx + 1] = brightness;
+                pixels[dstIdx + 2] = brightness;
+                pixels[dstIdx + 3] = 255;
+            }
+        }
+    }
+
+    slamCtx.putImageData(imgData, 0, 0);
+
+    const res = msg.info.resolution;
+    const mapW = (width * res).toFixed(1);
+    const mapH = (height * res).toFixed(1);
+    if (mapStatusLabel) mapStatusLabel.textContent = `Live map • ${width}×${height} (${mapW}×${mapH} m)`;
+    if (mapStatusPill) {
+        mapStatusPill.textContent = 'Live';
+        mapStatusPill.dataset.state = 'good';
+    }
+}
+
+function attachMapSubscription() {
+    if (mapTopic || !ros || !window.ROSLIB) return;
+    mapTopic = new ROSLIB.Topic({
+        ros,
+        name: '/map',
+        messageType: 'nav_msgs/msg/OccupancyGrid',
+        compression: 'cbor',
+    });
+    mapTopic.subscribe(renderOccupancyGrid);
+}
+
+function teardownMapSubscription() {
+    if (mapTopic) {
+        mapTopic.unsubscribe();
+        mapTopic = null;
+    }
+    if (mapStatusPill) {
+        mapStatusPill.textContent = 'Offline';
+        mapStatusPill.dataset.state = 'info';
+    }
+    if (mapStatusLabel) mapStatusLabel.textContent = 'Waiting for map data…';
 }
