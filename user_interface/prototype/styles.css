@@ -604,12 +604,22 @@ output {
 
 #slam-map-canvas {
     width: 100%;
-    max-width: 400px;
-    aspect-ratio: 1;
+    max-width: 480px;
     border-radius: 12px;
     background: #1e293b;
     image-rendering: pixelated;
     align-self: center;
+}
+
+.map-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+#refresh-map-btn {
+    font-size: 0.85rem;
+    padding: 6px 14px;
 }
 
 .run-log {

@@ -107,7 +107,14 @@ def generate_launch_description() -> LaunchDescription:
             package='odom_integrator',
             executable='odom_integrator_node',
             name='odom_integrator',
-            parameters=[{'update_rate_hz': 30.0}],
+            parameters=[{
+                'update_rate_hz': 30.0,
+                'enable_drift': False,
+                'linear_velocity_noise_std': 0.0,
+                'angular_velocity_noise_std': 0.0,
+                'linear_drift_std': 0.0,
+                'angular_drift_std': 0.0,
+            }],
         ),
         # --- Planning ---
         Node(

@@ -16,10 +16,9 @@ services:
       - ./build:/workspace/ros2_ws/build
       - ./log:/workspace/ros2_ws/log
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - /dev:/dev
     network_mode: host
-    devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0  # Yahboom CH340
-      - /dev/ttyUSB1:/dev/ttyUSB1  # RPLIDAR C1
+    privileged: true
     command: bash
     tty: true
     stdin_open: true
@@ -37,6 +36,6 @@ services:
       - ./install:/workspace/ros2_ws/install
       - ./build:/workspace/ros2_ws/build
       - ./log:/workspace/ros2_ws/log
-    command: ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+    command: ros2 launch rosbridge_server rosbridge_websocket_launch.xml call_services_in_new_thread:=true call_service_timeout:=10.0
     depends_on:
       - ros2

@@ -454,38 +454,45 @@ function renderOccupancyGrid(msg) {
     const height = msg.info.height;
     const data = msg.data;
 
-    slamCanvas.width = width;
-    slamCanvas.height = height;
+    // Scale up so each map cell is rendered as multiple canvas pixels
+    const scale = Math.max(1, Math.ceil(320 / Math.max(width, height)));
+    const cw = width * scale;
+    const ch = height * scale;
 
-    const imgData = slamCtx.createImageData(width, height);
+    slamCanvas.width = cw;
+    slamCanvas.height = ch;
+
+    const imgData = slamCtx.createImageData(cw, ch);
     const pixels = imgData.data;
 
     for (let row = 0; row < height; row++) {
         for (let col = 0; col < width; col++) {
             // OccupancyGrid row 0 is bottom; canvas row 0 is top → flip Y
             const srcIdx = (height - 1 - row) * width + col;
-            const dstIdx = (row * width + col) * 4;
             const cell = data[srcIdx];
 
+            let r, g, b;
             if (cell === -1 || cell === 255) {
                 // Unknown
-                pixels[dstIdx]     = 71;
-                pixels[dstIdx + 1] = 85;
-                pixels[dstIdx + 2] = 105;
-                pixels[dstIdx + 3] = 255;
+                r = 71; g = 85; b = 105;
             } else if (cell === 0) {
                 // Free space
-                pixels[dstIdx]     = 30;
-                pixels[dstIdx + 1] = 41;
-                pixels[dstIdx + 2] = 59;
-                pixels[dstIdx + 3] = 255;
+                r = 30; g = 41; b = 59;
             } else {
                 // Occupied — brighter = more certain
                 const brightness = Math.min(255, 100 + cell * 1.55);
-                pixels[dstIdx]     = brightness;
-                pixels[dstIdx + 1] = brightness;
-                pixels[dstIdx + 2] = brightness;
-                pixels[dstIdx + 3] = 255;
+                r = brightness; g = brightness; b = brightness;
+            }
+
+            // Fill the scale×scale block
+            for (let sy = 0; sy < scale; sy++) {
+                for (let sx = 0; sx < scale; sx++) {
+                    const dstIdx = ((row * scale + sy) * cw + (col * scale + sx)) * 4;
+                    pixels[dstIdx]     = r;
+                    pixels[dstIdx + 1] = g;
+                    pixels[dstIdx + 2] = b;
+                    pixels[dstIdx + 3] = 255;
+                }
             }
         }
     }
@@ -523,4 +530,66 @@ function teardownMapSubscription() {
         mapStatusPill.dataset.state = 'info';
     }
     if (mapStatusLabel) mapStatusLabel.textContent = 'Waiting for map data…';
+}
+
+// Refresh / reset the SLAM map
+const refreshMapBtn = document.getElementById('refresh-map-btn');
+if (refreshMapBtn) {
+    refreshMapBtn.addEventListener('click', () => {
+        // Visual feedback on the button
+        refreshMapBtn.disabled = true;
+        refreshMapBtn.textContent = '↻ Clearing SLAM…';
+
+        // Clear the canvas immediately
+        if (slamCtx && slamCanvas) {
+            slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
+        }
+        if (mapStatusLabel) mapStatusLabel.textContent = 'Clearing map…';
+        if (mapStatusPill) { mapStatusPill.textContent = '…'; mapStatusPill.dataset.state = 'info'; }
+
+        // Teardown subscription so the old map doesn't redraw
+        if (mapTopic) {
+            mapTopic.unsubscribe();
+            mapTopic = null;
+        }
+
+        // Call SLAM Toolbox clear service via rosbridge
+        if (ros && window.ROSLIB) {
+            const clearSrv = new ROSLIB.Service({
+                ros,
+                name: '/slam_toolbox/clear_changes',
+                serviceType: 'slam_toolbox/srv/Clear',
+            });
+            // Set a client-side timeout in case service hangs
+            const timeout = setTimeout(() => {
+                console.warn('SLAM clear timed out, re-subscribing');
+                if (mapStatusLabel) mapStatusLabel.textContent = 'Timeout — resuming live map';
+                attachMapSubscription();
+                refreshMapBtn.disabled = false;
+                refreshMapBtn.textContent = '↻ Refresh Map';
+            }, 8000);
+
+            clearSrv.callService(new ROSLIB.ServiceRequest({}), () => {
+                clearTimeout(timeout);
+                if (mapStatusLabel) mapStatusLabel.textContent = 'Map cleared — rebuilding…';
+                attachMapSubscription();
+                refreshMapBtn.disabled = false;
+                refreshMapBtn.textContent = '↻ Refresh Map';
+            }, (err) => {
+                clearTimeout(timeout);
+                console.warn('SLAM clear failed:', err);
+                if (mapStatusLabel) mapStatusLabel.textContent = 'Clear failed — resuming live map';
+                attachMapSubscription();
+                refreshMapBtn.disabled = false;
+                refreshMapBtn.textContent = '↻ Refresh Map';
+            });
+        } else {
+            // No rosbridge — just resubscribe
+            setTimeout(() => {
+                attachMapSubscription();
+                refreshMapBtn.disabled = false;
+                refreshMapBtn.textContent = '↻ Refresh Map';
+            }, 500);
+        }
+    });
 }
