@@ -75,6 +75,20 @@ def generate_launch_description() -> LaunchDescription:
             ],
             output='screen',
         ),
+        # --- Static log-odds mapper — publishes /map_static (UI can switch to it) ---
+        Node(
+            package='polar_to_grid_mapper',
+            executable='polar_to_grid_mapper_node',
+            name='polar_to_grid_mapper',
+            parameters=[{
+                'map_topic': '/map_static',
+                'resolution': 0.05,
+                'width': 200,
+                'height': 200,
+                'publish_rate_hz': 2.0,
+            }],
+            output='screen',
+        ),
         # --- Hardware driver ---
         Node(
             package='yahboom_driver',

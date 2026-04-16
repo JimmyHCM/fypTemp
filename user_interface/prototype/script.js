@@ -245,6 +245,7 @@ function connectToRosbridge() {
         teardownMissionStateSubscription();
         attachMissionStateSubscription();
         attachMapSubscription();
+        attachTfSubscription();
         window.ros = ros;
     });
 
@@ -253,6 +254,7 @@ function connectToRosbridge() {
         setConnectivityState('error', 'Connection error. Retrying…');
         teardownMissionStateSubscription();
         teardownMapSubscription();
+        teardownTfSubscription();
         ros = null;
         scheduleReconnect();
     });
@@ -261,6 +263,7 @@ function connectToRosbridge() {
         setConnectivityState('error', 'Disconnected. Retrying…');
         teardownMissionStateSubscription();
         teardownMapSubscription();
+        teardownTfSubscription();
         ros = null;
         if (suppressNextReconnect) {
             suppressNextReconnect = false;
@@ -447,6 +450,111 @@ const mapStatusLabel = document.getElementById('map-status-label');
 const mapStatusPill = document.getElementById('map-status-pill');
 let mapTopic = null;
 
+const MAP_SOURCES = {
+    slam: { topic: '/map', label: 'SLAM' },
+    static: { topic: '/map_static', label: 'Static' },
+};
+let activeMapSource = window.localStorage?.getItem('mapSource') || 'slam';
+if (!MAP_SOURCES[activeMapSource]) activeMapSource = 'slam';
+
+// Robot pose tracking via TF (map → odom → base_link)
+let tfTopic = null;
+let tfStaticTopic = null;
+let tfMapToOdom = { tx: 0, ty: 0, yaw: 0 }; // identity default (static mapper — map ≡ odom)
+let tfOdomToBase = null;
+let lastGridSnapshot = null; // { canvas, origin, resolution, width, height, scale }
+
+function quatToYaw(q) {
+    const w = (q.w === undefined || q.w === null) ? 1.0 : q.w;
+    return Math.atan2(2 * (w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z));
+}
+
+function robotPoseInMap() {
+    if (!tfOdomToBase) return null;
+    const a = tfMapToOdom;
+    const b = tfOdomToBase;
+    const c = Math.cos(a.yaw), s = Math.sin(a.yaw);
+    return {
+        x: a.tx + c * b.tx - s * b.ty,
+        y: a.ty + s * b.tx + c * b.ty,
+        yaw: a.yaw + b.yaw,
+    };
+}
+
+function handleTfMsg(msg) {
+    let updated = false;
+    for (const t of msg.transforms) {
+        const parent = (t.header.frame_id || '').replace(/^\//, '');
+        const child = (t.child_frame_id || '').replace(/^\//, '');
+        const tr = t.transform;
+        if (parent === 'map' && child === 'odom') {
+            tfMapToOdom = { tx: tr.translation.x, ty: tr.translation.y, yaw: quatToYaw(tr.rotation) };
+            updated = true;
+        } else if (parent === 'odom' && child === 'base_link') {
+            tfOdomToBase = { tx: tr.translation.x, ty: tr.translation.y, yaw: quatToYaw(tr.rotation) };
+            updated = true;
+        }
+    }
+    if (updated) redrawRobotMarker();
+}
+
+function redrawRobotMarker() {
+    if (!lastGridSnapshot || !slamCtx) return;
+    const { canvas, origin, resolution, width, height, scale } = lastGridSnapshot;
+    slamCtx.drawImage(canvas, 0, 0);
+
+    const pose = robotPoseInMap();
+    if (!pose) return;
+    const col = Math.floor((pose.x - origin.x) / resolution);
+    const rowMap = Math.floor((pose.y - origin.y) / resolution);
+    if (col < 0 || col >= width || rowMap < 0 || rowMap >= height) return;
+    const rowCanvas = height - 1 - rowMap;
+    const px = col * scale + scale / 2;
+    const py = rowCanvas * scale + scale / 2;
+
+    // Heading arrow (map +X → canvas +X, map +Y → canvas -Y)
+    const len = Math.max(10, scale * 3);
+    slamCtx.strokeStyle = '#22c55e';
+    slamCtx.lineWidth = 3;
+    slamCtx.beginPath();
+    slamCtx.moveTo(px, py);
+    slamCtx.lineTo(px + len * Math.cos(pose.yaw), py - len * Math.sin(pose.yaw));
+    slamCtx.stroke();
+
+    // Robot dot
+    slamCtx.fillStyle = '#22c55e';
+    slamCtx.strokeStyle = '#0f172a';
+    slamCtx.lineWidth = 2;
+    slamCtx.beginPath();
+    slamCtx.arc(px, py, 5, 0, Math.PI * 2);
+    slamCtx.fill();
+    slamCtx.stroke();
+}
+
+function attachTfSubscription() {
+    if (!ros || !window.ROSLIB) return;
+    if (!tfTopic) {
+        tfTopic = new ROSLIB.Topic({
+            ros, name: '/tf', messageType: 'tf2_msgs/msg/TFMessage', throttle_rate: 50,
+        });
+        tfTopic.subscribe(handleTfMsg);
+    }
+    if (!tfStaticTopic) {
+        tfStaticTopic = new ROSLIB.Topic({
+            ros, name: '/tf_static', messageType: 'tf2_msgs/msg/TFMessage',
+        });
+        tfStaticTopic.subscribe(handleTfMsg);
+    }
+}
+
+function teardownTfSubscription() {
+    if (tfTopic) { tfTopic.unsubscribe(); tfTopic = null; }
+    if (tfStaticTopic) { tfStaticTopic.unsubscribe(); tfStaticTopic = null; }
+    tfOdomToBase = null;
+    tfMapToOdom = { tx: 0, ty: 0, yaw: 0 };
+    lastGridSnapshot = null;
+}
+
 function renderOccupancyGrid(msg) {
     if (!slamCtx) return;
 
@@ -500,6 +608,16 @@ function renderOccupancyGrid(msg) {
     slamCtx.putImageData(imgData, 0, 0);
 
     const res = msg.info.resolution;
+    const origin = { x: msg.info.origin.position.x, y: msg.info.origin.position.y };
+
+    // Cache raw grid as offscreen canvas so TF updates can redraw the marker cheaply
+    const snapshot = document.createElement('canvas');
+    snapshot.width = cw;
+    snapshot.height = ch;
+    snapshot.getContext('2d').putImageData(imgData, 0, 0);
+    lastGridSnapshot = { canvas: snapshot, origin, resolution: res, width, height, scale };
+    redrawRobotMarker();
+
     const mapW = (width * res).toFixed(1);
     const mapH = (height * res).toFixed(1);
     if (mapStatusLabel) mapStatusLabel.textContent = `Live map • ${width}×${height} (${mapW}×${mapH} m)`;
@@ -511,9 +629,10 @@ function renderOccupancyGrid(msg) {
 
 function attachMapSubscription() {
     if (mapTopic || !ros || !window.ROSLIB) return;
+    const src = MAP_SOURCES[activeMapSource];
     mapTopic = new ROSLIB.Topic({
         ros,
-        name: '/map',
+        name: src.topic,
         messageType: 'nav_msgs/msg/OccupancyGrid',
         compression: 'cbor',
     });
@@ -593,3 +712,30 @@ if (refreshMapBtn) {
         }
     });
 }
+
+// Map source toggle (SLAM vs static log-odds mapper)
+const mapSourceButtons = document.querySelectorAll('.map-source-btn');
+function applyMapSource(source) {
+    if (!MAP_SOURCES[source] || source === activeMapSource) return;
+    activeMapSource = source;
+    window.localStorage?.setItem('mapSource', source);
+    mapSourceButtons.forEach(btn => {
+        const isActive = btn.dataset.source === source;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    if (slamCtx && slamCanvas) slamCtx.clearRect(0, 0, slamCanvas.width, slamCanvas.height);
+    if (mapStatusLabel) mapStatusLabel.textContent = `Switching to ${MAP_SOURCES[source].label}…`;
+    if (mapTopic) { mapTopic.unsubscribe(); mapTopic = null; }
+    attachMapSubscription();
+}
+mapSourceButtons.forEach(btn => {
+    btn.addEventListener('click', () => applyMapSource(btn.dataset.source));
+    if (btn.dataset.source === activeMapSource) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+    } else {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+    }
+});

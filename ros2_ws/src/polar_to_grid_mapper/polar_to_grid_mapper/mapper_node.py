@@ -24,6 +24,7 @@ class PolarToGridMapperNode(Node):
         self.declare_parameter('max_log_odds', 3.5)
         self.declare_parameter('publish_rate_hz', 2.0)
         self.declare_parameter('scan_topic', '/scan')
+        self.declare_parameter('map_topic', '/map')
 
         self.pose: Pose | None = None
         self.map_frame = 'map'
@@ -38,7 +39,8 @@ class PolarToGridMapperNode(Node):
         sensor_qos = QoSPresetProfiles.SENSOR_DATA.value
         scan_topic = str(self.get_parameter('scan_topic').value)
 
-        self.map_pub = self.create_publisher(OccupancyGrid, '/map', 10)
+        map_topic = str(self.get_parameter('map_topic').value)
+        self.map_pub = self.create_publisher(OccupancyGrid, map_topic, 10)
         self.scan_sub = self.create_subscription(LaserScan, scan_topic, self.scan_callback, sensor_qos)
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, sensor_qos)
 
